@@ -1,0 +1,74 @@
+{
+  "employees": [
+    {
+      "employee_id": "E1001",
+      "name": "Priya Shah",
+      "role": "individual_contributor",
+      "hired_on": "2021-01-15",
+      "equipment": [
+        {"item": "laptop", "issued_on": "2021-03-01", "asset_tag": "LT-1001"},
+        {"item": "monitor", "issued_on": "2024-01-10", "asset_tag": "MN-1001"},
+        {"item": "headset", "issued_on": "2025-11-01", "asset_tag": "HS-1001"}
+      ]
+    },
+    {
+      "employee_id": "E1002",
+      "name": "Jordan Lee",
+      "role": "manager",
+      "hired_on": "2019-06-01",
+      "equipment": [
+        {"item": "laptop", "issued_on": "2025-08-01", "asset_tag": "LT-1002"},
+        {"item": "monitor", "issued_on": "2023-01-15", "asset_tag": "MN-1002"},
+        {"item": "docking_station", "issued_on": "2020-02-01", "asset_tag": "DK-1002"}
+      ]
+    },
+    {
+      "employee_id": "E1003",
+      "name": "Sam Ortiz",
+      "role": "individual_contributor",
+      "hired_on": "2026-08-01",
+      "equipment": [
+        {"item": "laptop", "issued_on": "2026-08-01", "asset_tag": "LT-1003"}
+      ]
+    },
+    {
+      "employee_id": "E1004",
+      "name": "Riley Chen",
+      "role": "contractor",
+      "hired_on": "2026-01-15",
+      "equipment": [
+        {"item": "laptop", "issued_on": "2026-01-20", "asset_tag": "LT-1004"}
+      ]
+    },
+    {
+      "employee_id": "E1005",
+      "name": "Avery Brooks",
+      "role": "executive",
+      "hired_on": "2018-03-01",
+      "equipment": [
+        {"item": "laptop", "issued_on": "2023-01-01", "asset_tag": "LT-1005"},
+        {"item": "monitor", "issued_on": "2025-06-01", "asset_tag": "MN-1005A"},
+        {"item": "monitor", "issued_on": "2025-06-01", "asset_tag": "MN-1005B"}
+      ]
+    },
+    {
+      "employee_id": "E1007",
+      "name": "Morgan Patel",
+      "role": "individual_contributor",
+      "hired_on": "2020-05-01",
+      "equipment": [
+        {"item": "laptop", "issued_on": "2025-06-01", "asset_tag": "LT-1007"}
+      ]
+    },
+    {
+      "employee_id": "E1008",
+      "name": "Casey Nguyen",
+      "role": "individual_contributor",
+      "hired_on": "2022-02-01",
+      "equipment": [
+        {"item": "keyboard", "issued_on": null, "asset_tag": "KB-1008"},
+        {"item": "mouse", "issued_on": "2024-01-01", "asset_tag": "MS-1008"}
+      ]
+    }
+  ]
+}

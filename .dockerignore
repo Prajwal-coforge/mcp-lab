@@ -1,0 +1,9 @@
+.venv
+.pytest_cache
+.github
+.git
+var
+**/__pycache__
+**/*.pyc
+.DS_Store
+src/equipment_claims/data/review_queue.json

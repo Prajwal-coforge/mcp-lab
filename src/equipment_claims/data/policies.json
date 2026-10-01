@@ -1,0 +1,45 @@
+{
+  "as_of": "2026-09-30",
+  "probation_days": 90,
+  "refresh_year_days": 365,
+  "roles": {
+    "individual_contributor": {
+      "summary": "One laptop every 4 years, one monitor every 3 years, and one headset, keyboard, and mouse every 2 years. Docking stations are not covered.",
+      "items": {
+        "laptop": {"max_count": 1, "refresh_years": 4},
+        "monitor": {"max_count": 1, "refresh_years": 3},
+        "headset": {"max_count": 1, "refresh_years": 2},
+        "keyboard": {"max_count": 1, "refresh_years": 2},
+        "mouse": {"max_count": 1, "refresh_years": 2}
+      }
+    },
+    "manager": {
+      "summary": "One laptop every 2 years, up to two monitors every 3 years, one docking station every 3 years, and one headset, keyboard, and mouse every 2 years.",
+      "items": {
+        "laptop": {"max_count": 1, "refresh_years": 2},
+        "monitor": {"max_count": 2, "refresh_years": 3},
+        "docking_station": {"max_count": 1, "refresh_years": 3},
+        "headset": {"max_count": 1, "refresh_years": 2},
+        "keyboard": {"max_count": 1, "refresh_years": 2},
+        "mouse": {"max_count": 1, "refresh_years": 2}
+      }
+    },
+    "executive": {
+      "summary": "One laptop every 2 years, up to two monitors every 2 years, one docking station every 2 years, and one headset, keyboard, and mouse every 2 years.",
+      "items": {
+        "laptop": {"max_count": 1, "refresh_years": 2},
+        "monitor": {"max_count": 2, "refresh_years": 2},
+        "docking_station": {"max_count": 1, "refresh_years": 2},
+        "headset": {"max_count": 1, "refresh_years": 2},
+        "keyboard": {"max_count": 1, "refresh_years": 2},
+        "mouse": {"max_count": 1, "refresh_years": 2}
+      }
+    },
+    "contractor": {
+      "summary": "One loaner laptop only, and only when none is already on file. No refresh cycle and no peripherals.",
+      "items": {
+        "laptop": {"max_count": 1, "refresh_years": null}
+      }
+    }
+  }
+}

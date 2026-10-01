@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+var/
+src/equipment_claims/data/review_queue.json
+.DS_Store
