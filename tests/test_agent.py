@@ -1,91 +1,79 @@
-"""Decision rules, reflection, and the agent talking to the MCP server."""
+"""The live agent calls local Qwen through Ollama.
+
+The four-request run is skipped when Ollama is not running, which is the case
+in CI. Parsing the model's decision line does not call the model.
+"""
 
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import os
 
-from equipment_claims.agent import decide, initial_draft, reflect_on_draft, run_scenarios
-from equipment_claims.scenarios import SCENARIOS
-from equipment_claims.service import check_request_eligibility, get_employee_info
+import pytest
 
-
-def test_clear_replacement_is_approved():
-    employee = get_employee_info("E1001")
-    eligibility = check_request_eligibility("E1001", "laptop")
-    request = "Employee E1001 needs a laptop replacement. The current one is too slow."
-
-    decision, reason = decide(request, employee, eligibility)
-
-    assert eligibility["status"] == "eligible_replacement"
-    assert decision == "approve"
-    assert reason == eligibility["explanation"]
+from equipment_claims.agent import CaseResult, ollama_reachable, parse_decision, run_scenarios, score_run
+from equipment_claims.logging_config import configure_logging
 
 
-def test_extra_unit_at_the_cap_is_denied_even_if_a_replacement_would_be_allowed():
-    employee = get_employee_info("E1001")
-    eligibility = check_request_eligibility("E1001", "laptop")
-    request = "Employee E1001 wants a second laptop."
-
-    decision, _reason = decide(request, employee, eligibility)
-
-    assert decision == "deny"
-
-
-def test_replacement_window_without_a_stated_intent_is_escalated():
-    employee = get_employee_info("E1001")
-    eligibility = check_request_eligibility("E1001", "laptop")
-    request = "Employee E1001 needs a laptop."
-
-    decision, reason = decide(request, employee, eligibility)
-
-    assert decision == "escalate"
-    assert "replacement" in reason
-    assert "additional" in reason
+def test_configure_logging_is_idempotent(tmp_path, monkeypatch):
+    monkeypatch.setenv("EQUIPMENT_LOG_FILE", str(tmp_path / "equipment_claims.log"))
+    monkeypatch.setenv("EQUIPMENT_LOG_LEVEL", "INFO")
+    configure_logging(force=True)
+    configure_logging()
+    parent = logging.getLogger("equipment_claims")
+    assert len(parent.handlers) == 2
+    logging.getLogger("equipment_claims.eval").info("scenario=demo expected=approve predicted=approve correct=True")
+    text = (tmp_path / "equipment_claims.log").read_text()
+    assert "equipment_claims.eval" in text
+    assert "correct=True" in text
 
 
-def test_unknown_employee_is_escalated():
-    employee = get_employee_info("E1006")
-    eligibility = check_request_eligibility("E1006", "laptop")
+def test_score_run_counts_matches_and_misses():
+    scenarios = [
+        {"id": "approve-second-monitor", "expected": "approve"},
+        {"id": "deny-extra-monitor", "expected": "deny"},
+        {"id": "escalate-ambiguous-item", "expected": "escalate"},
+    ]
+    results = [
+        CaseResult(request="a", decision="approve", tool_calls=["get_employee_info"]),
+        CaseResult(request="b", decision="approve", tool_calls=["get_employee_info", "check_request_eligibility"]),
+        CaseResult(
+            request="c",
+            decision="escalate",
+            tool_calls=["flag_for_human_review"],
+            ticket={"ticket_id": "REV-0001"},
+            trace_lines=["Reflection: CONFIRMED"],
+        ),
+    ]
 
-    decision, _reason = decide("Employee E1006 needs a laptop.", employee, eligibility)
+    score = score_run(scenarios, results)
 
-    assert employee["found"] is False
-    assert eligibility["status"] == "not_found"
-    assert decision == "escalate"
-
-
-def test_reflection_rejects_a_guess_and_a_denial_that_ignores_an_accommodation():
-    ambiguous_request = SCENARIOS[2]["request"]
-    ambiguous = check_request_eligibility("E1005", "screen or dock")
-    employee = get_employee_info("E1005")
-    decision, reason = decide(ambiguous_request, employee, ambiguous)
-    draft = initial_draft(ambiguous_request, ambiguous)
-    issues = reflect_on_draft(draft, decision, reason, ambiguous)
-
-    assert decision == "escalate"
-    assert draft.startswith("Approved")
-    assert issues
-
-    conflict_request = SCENARIOS[3]["request"]
-    conflict_employee = get_employee_info("E1007")
-    conflict = check_request_eligibility("E1007", "laptop")
-    conflict_decision, conflict_reason = decide(conflict_request, conflict_employee, conflict)
-    conflict_draft = initial_draft(conflict_request, conflict)
-    conflict_issues = reflect_on_draft(conflict_draft, conflict_decision, conflict_reason, conflict)
-
-    assert conflict["status"] == "ineligible_too_soon"
-    assert conflict_draft.startswith("Denied")
-    assert conflict_decision == "escalate"
-    assert conflict_issues
-    assert "doctor" in conflict_reason
-    assert "4 years" in conflict_reason
+    assert score["cases"] == 3
+    assert score["correct"] == 2
+    assert score["accuracy"] == 2 / 3
+    assert score["rows"][1]["correct"] is False
+    assert score["rows"][2]["ticket_id"] == "REV-0001"
+    assert score["by_label"]["deny"] == {"expected": 1, "predicted": 0, "correct": 0}
+    assert score["by_label"]["escalate"]["correct"] == 1
 
 
+def test_parse_decision_reads_the_model_line():
+    text = "Reflection: CONFIRMED\nFinal response: Approved.\nFINAL DECISION: APPROVE"
+    assert parse_decision(text) == "approve"
+
+
+@pytest.mark.skipif(
+    not ollama_reachable() or os.environ.get("EQUIPMENT_RUN_LLM_TESTS") != "1",
+    reason="Set EQUIPMENT_RUN_LLM_TESTS=1 while Ollama is running to call local Qwen.",
+)
 def test_agent_over_mcp_runs_all_four_requests(tmp_path):
     review_log = tmp_path / "review_queue.json"
-    tool_names, results = asyncio.run(run_scenarios(review_log))
+    tool_names, results, model, temperature = asyncio.run(run_scenarios(review_log))
 
+    assert model == "qwen3:8b"
+    assert temperature > 0
     assert tool_names == [
         "get_employee_info",
         "get_policy_limits",
@@ -93,42 +81,12 @@ def test_agent_over_mcp_runs_all_four_requests(tmp_path):
         "flag_for_human_review",
     ]
     assert [result.decision for result in results] == ["approve", "deny", "escalate", "escalate"]
-
-    approve, deny, ambiguous, conflict = results
-    assert approve.reflection_confirmed_initial
-    assert approve.ticket is None
-    assert approve.final_response.startswith("Approved")
-    assert "up to 2" in approve.final_response
-    assert approve.final_reflection_confirmed
-
-    assert deny.reflection_confirmed_initial
-    assert deny.ticket is None
-    assert deny.final_response.startswith("Denied")
-    assert "every 3 years" in deny.final_response
-
-    assert ambiguous.initial_draft.startswith("Approved")
-    assert not ambiguous.reflection_confirmed_initial
-    assert ambiguous.final_response.startswith("Escalated")
-    assert ambiguous.ticket is not None
-    assert "monitor" in ambiguous.ticket["reason"]
-    assert "docking_station" in ambiguous.ticket["reason"]
-    assert ambiguous.ticket["ticket_id"] in ambiguous.final_response
-    assert ambiguous.final_reflection_confirmed
-
-    assert conflict.initial_draft.startswith("Denied")
-    assert not conflict.reflection_confirmed_initial
-    assert conflict.final_response.startswith("Escalated")
-    assert "doctor" in conflict.ticket["reason"]
-    assert "4 years" in conflict.ticket["reason"]
-    assert conflict.ticket["reason"] in conflict.final_response
-
     for result in results:
         assert "Thought:" in result.trace
         assert "Action:" in result.trace
         assert "Observation:" in result.trace
         assert "Reflection:" in result.trace
-
+    escalated = [result for result in results if result.decision == "escalate"]
+    assert all(result.ticket is not None for result in escalated)
     saved = json.loads(review_log.read_text())
-    assert [row["ticket_id"] for row in saved] == ["REV-0001", "REV-0002"]
-    assert saved[0]["employee_id"] == "E1005"
-    assert saved[1]["employee_id"] == "E1007"
+    assert len(saved) == 2

@@ -7,9 +7,12 @@ Run over stdio (the client launches this process):
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from mcp.server import MCPServer
+
+from equipment_claims.logging_config import configure_logging
 
 from equipment_claims.service import (
     check_request_eligibility as check_request_eligibility_fn,
@@ -58,6 +61,8 @@ def flag_for_human_review(employee_id: str, request: str, reason: str) -> dict[s
 
 
 def main() -> None:
+    configure_logging()
+    logging.getLogger("equipment_claims.server").info("stdio server starting")
     mcp.run(transport="stdio")
 
 
